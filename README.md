@@ -1,2 +1,2 @@
-# my-finance
+# jwt-auth
 app
