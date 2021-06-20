@@ -1,28 +1,31 @@
-import "reflect-metadata";
+import 'reflect-metadata';
 import express from 'express';
-import {ApolloServer} from 'apollo-server-express'
+import { ApolloServer } from 'apollo-server-express';
 import { buildSchema } from 'type-graphql';
+import { createConnection } from 'typeorm';
 
 import { UserResolver } from './UserResolver';
-import { createConnection } from "typeorm";
 
-(async() => {
-    const app = express();
-    app.get('/', (_req, res) => res.send('Hello'));
+import { MyContext } from './MyContext';
 
-    await createConnection();
+(async () => {
+  const app = express();
+  app.get('/', (_req, res) => res.send('Hello'));
 
-    const apolloServer = new ApolloServer({
-        schema: await buildSchema({
-            resolvers: [UserResolver]
-        })
-    })
+  await createConnection();
 
-    apolloServer.applyMiddleware({ app });
+  const apolloServer = new ApolloServer({
+    schema: await buildSchema({
+      resolvers: [UserResolver],
+    }),
+    context: ({ req, res }): MyContext => ({ req, res }),
+  });
 
-    app.listen(4000, () => {
-        console.log('express server started')
-    });
+  apolloServer.applyMiddleware({ app });
+
+  app.listen(4000, () => {
+    console.log('express server started');
+  });
 })();
 
 // createConnection().then(async connection => {

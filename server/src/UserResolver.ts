@@ -1,38 +1,75 @@
-import { Resolver, Query, Mutation, Arg } from "type-graphql";
-import {hash} from 'bcryptjs';
+import {
+  Resolver,
+  Query,
+  Mutation,
+  Arg,
+  ObjectType,
+  Field,
+} from 'type-graphql';
+import { hash, compare } from 'bcryptjs';
+import { sign } from 'jsonwebtoken';
 
-import { User } from "./entity/User";
+import { User } from './entity/User';
+
+@ObjectType()
+class LoginResponse {
+  @Field()
+  accessToken: string;
+}
 
 @Resolver()
-export class UserResolver { 
-    @Query(() => String)
-    hello () {
-        return 'hi';
+export class UserResolver {
+  @Query(() => String)
+  hello() {
+    return 'hi';
+  }
+
+  @Query(() => [User])
+  users() {
+    return User.find();
+  }
+
+  @Mutation(() => LoginResponse)
+  async login(
+    @Arg('email') email: string,
+    @Arg('password') password: string
+  ): Promise<LoginResponse> {
+    const user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      throw new Error("couldn't find  user");
     }
 
-    @Query(() => [User])
-    users () {
-        return User.find();
+    const valid = await compare(password, user.password);
+
+    if (!valid) {
+      throw new Error('Incorrect password');
     }
 
-    @Mutation(() => Boolean)
-    async register(
-        @Arg('email') email : string,
-        @Arg('password') password: string,
-    ) {
-        const hashedPassword = await hash(password, 12)
+    return {
+      accessToken: sign({ userId: user.id }, 'nckjsnsnfkn', {
+        expiresIn: '15m',
+      }),
+    };
+  }
 
-        try {
-            await User.insert({
-                email, 
-                password: hashedPassword
-            })
-        } catch (err) {
-            console.log(err);
-            return false;
-        }
-       
+  @Mutation(() => Boolean)
+  async register(
+    @Arg('email') email: string,
+    @Arg('password') password: string
+  ) {
+    const hashedPassword = await hash(password, 12);
 
-        return true;
+    try {
+      await User.insert({
+        email,
+        password: hashedPassword,
+      });
+    } catch (err) {
+      console.log(err);
+      return false;
     }
+
+    return true;
+  }
 }
